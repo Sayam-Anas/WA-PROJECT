@@ -1,4 +1,3 @@
-
 import customtkinter as ctk
 from tkinter import filedialog
 import webbrowser
@@ -368,7 +367,7 @@ class WaitTimeSettingsDialog(ctk.CTkToplevel):
 # MAIN APPLICATION CLASS
 # ==========================================================
 class CollegeApp(ctk.CTk):
-    CORRECT_PASSWORD = "9359168663"
+    CORRECT_PASSWORD = "ASDFGHJK"
 
     VIEW_INITIAL = 0
     VIEW_UPLOAD = 1
@@ -388,7 +387,7 @@ class CollegeApp(ctk.CTk):
         self.after_id_enable = None
 
         # Wait time configuration
-        self.wait_time_value = 8
+        self.wait_time_value = 10
         self.secret_code_buffer = ""
 
         # Status tracking for export
@@ -516,7 +515,32 @@ class CollegeApp(ctk.CTk):
 
     def proceed_to_utility(self):
         self.cancel_pending_timers()
-        self.show_main_utility_page()
+        # Add smooth transition with fade effect
+        self._smooth_transition_to_utility()
+
+    def _smooth_transition_to_utility(self):
+        """Smooth transition from page 2 to page 3 with fade effect"""
+        # Disable all interactive elements first
+        self.proceed_btn.configure(state="disabled")
+        self.open_browser_btn.configure(state="disabled")
+
+        # Update the UI to ensure all changes are rendered
+        self.update_idletasks()
+
+        # Small delay to ensure smooth rendering
+        self.after(50, self._build_utility_page)
+
+    def _build_utility_page(self):
+        """Build the utility page with pre-configuration"""
+        # Clear existing widgets
+        for widget in self.winfo_children():
+            widget.destroy()
+
+        # Force update to clear the screen
+        self.update_idletasks()
+
+        # Small delay before building new page
+        self.after(50, self.show_main_utility_page)
 
     def focus_password(self, event=None):
         """Move focus to password field when Enter is pressed in username field"""
@@ -1074,12 +1098,12 @@ class CollegeApp(ctk.CTk):
         self._check_send_button_state()
 
     def show_main_utility_page(self):
-        for widget in self.winfo_children():
-            widget.destroy()
-
+        """Build page 3 with optimized rendering to prevent glitches"""
+        # Pre-configure grid before adding widgets
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(0, weight=1)
 
+        # Create main content frame
         content_frame = ctk.CTkFrame(self, corner_radius=20)
         content_frame.grid(row=0, column=0, sticky="nsew", padx=100, pady=100)
         content_frame.grid_columnconfigure(0, weight=2, uniform="main_col")
@@ -1089,11 +1113,20 @@ class CollegeApp(ctk.CTk):
         def open_logout_dialog():
             ConfirmLogoutDialog(self, command=lambda: self.show_start_page())
 
+        # Logout button (left side)
         logout_btn = ctk.CTkButton(
             self, text="Logout", width=150, height=40,
             fg_color=LOGOUT_RED, hover_color="#C62828", command=open_logout_dialog
         )
         logout_btn.place(relx=0.05, rely=0.05, anchor=ctk.NW)
+
+        # Help button (right side) - same size as logout button
+        help_btn = ctk.CTkButton(
+            self, text="Help", width=150, height=40,
+            fg_color=DEFAULT_BLUE, hover_color=DEFAULT_HOVER_BLUE,
+            command=lambda: None  # No functionality
+        )
+        help_btn.place(relx=0.95, rely=0.05, anchor=ctk.NE)
 
         utility_panel = ctk.CTkFrame(content_frame, fg_color="transparent")
         utility_panel.grid(row=0, column=0, sticky="nsew", padx=(20, 10), pady=(20, 20))
@@ -1242,8 +1275,12 @@ class CollegeApp(ctk.CTk):
 
         self._update_live_status("", "", "")
 
-        self.toggle_upload_view(self.VIEW_INITIAL)
-        self._check_send_button_state()
+        # Force UI update before showing elements
+        self.update_idletasks()
+
+        # Initialize view with a small delay to ensure smooth rendering
+        self.after(50, lambda: self.toggle_upload_view(self.VIEW_INITIAL))
+        self.after(100, self._check_send_button_state)
 
 
 if __name__ == "__main__":
