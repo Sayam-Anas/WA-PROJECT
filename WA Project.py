@@ -129,6 +129,75 @@ def send_whatsapp_messages_threaded(app_instance: ctk.CTk, formatted_numbers: Li
 # ==========================================================
 # DIALOG CLASSES
 # ==========================================================
+class HelpDialog(ctk.CTkToplevel):
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.title("Help")
+        self.transient(parent)
+        self.grab_set()
+        self.resizable(False, False)
+
+        screen_width = self.winfo_screenwidth()
+        screen_height = self.winfo_screenheight()
+        width, height = 500, 300
+        x = (screen_width // 2) - (width // 2)
+        y = (screen_height // 2) - (height // 2)
+        self.geometry(f'{width}x{height}+{x}+{y}')
+
+        self.parent = parent
+        self.grid_columnconfigure(0, weight=1)
+        self.grid_rowconfigure(0, weight=0)
+        self.grid_rowconfigure(1, weight=0)
+        self.grid_rowconfigure(2, weight=1)
+        self.grid_rowconfigure(3, weight=0)
+
+        title_label = ctk.CTkLabel(
+            self,
+            text="💡 Help & Troubleshooting",
+            font=ctk.CTkFont(size=20, weight="bold")
+        )
+        title_label.grid(row=0, column=0, padx=20, pady=(20, 15), sticky="ew")
+
+        # First message
+        message1_label = ctk.CTkLabel(
+            self,
+            text="1. If the message is not sent please increase the timer by one unit and try again...",
+            font=ctk.CTkFont(size=14),
+            wraplength=450,
+            justify="left"
+        )
+        message1_label.grid(row=1, column=0, padx=20, pady=(0, 10), sticky="w")
+
+        # Second message
+        message2_label = ctk.CTkLabel(
+            self,
+            text="2. If the process is slow...! Please decrease the timer.",
+            font=ctk.CTkFont(size=14),
+            wraplength=450,
+            justify="left"
+        )
+        message2_label.grid(row=2, column=0, padx=20, pady=(0, 20), sticky="w")
+
+        # Timer button at the bottom
+        timer_btn = ctk.CTkButton(
+            self,
+            text="Timer",
+            font=ctk.CTkFont(size=16, weight="bold"),
+            height=40,
+            fg_color=DEFAULT_BLUE,
+            hover_color=DEFAULT_HOVER_BLUE,
+            command=self.open_timer_settings
+        )
+        timer_btn.grid(row=3, column=0, padx=20, pady=(0, 20), sticky="ew")
+
+        self.protocol("WM_DELETE_WINDOW", self.destroy)
+
+    def open_timer_settings(self):
+        """Open the wait time settings dialog"""
+        self.destroy()
+        self.parent.open_wait_time_settings()
+
+
 class ConfirmSendDialog(ctk.CTkToplevel):
     def __init__(self, parent, send_command):
         super().__init__(parent)
@@ -237,7 +306,7 @@ class WaitTimeSettingsDialog(ctk.CTkToplevel):
 
         screen_width = self.winfo_screenwidth()
         screen_height = self.winfo_screenheight()
-        width, height = 400, 250
+        width, height = 400, 320  # Increased height to 320
         x = (screen_width // 2) - (width // 2)
         y = (screen_height // 2) - (height // 2)
         self.geometry(f'{width}x{height}+{x}+{y}')
@@ -245,6 +314,13 @@ class WaitTimeSettingsDialog(ctk.CTkToplevel):
         self.result = None
         self.current_value = current_wait_time
         self.grid_columnconfigure(0, weight=1)
+
+        # Configure row weights for proper spacing
+        self.grid_rowconfigure(0, weight=0)  # Title
+        self.grid_rowconfigure(1, weight=0)  # Info
+        self.grid_rowconfigure(2, weight=1)  # Controls (expands)
+        self.grid_rowconfigure(3, weight=0)  # Range label
+        self.grid_rowconfigure(4, weight=0)  # Buttons
 
         title_label = ctk.CTkLabel(
             self,
@@ -259,12 +335,13 @@ class WaitTimeSettingsDialog(ctk.CTkToplevel):
             font=ctk.CTkFont(size=13),
             text_color="gray"
         )
-        info_label.grid(row=1, column=0, padx=20, pady=(0, 20), sticky="ew")
+        info_label.grid(row=1, column=0, padx=20, pady=(0, 10), sticky="ew")
 
         # Control frame with increment/decrement buttons
         control_frame = ctk.CTkFrame(self, fg_color="transparent")
-        control_frame.grid(row=2, column=0, padx=20, pady=10, sticky="ew")
+        control_frame.grid(row=2, column=0, padx=20, pady=20, sticky="nsew")
         control_frame.grid_columnconfigure((0, 1, 2), weight=1)
+        control_frame.grid_rowconfigure(0, weight=1)
 
         self.decrement_btn = ctk.CTkButton(
             control_frame,
@@ -304,7 +381,7 @@ class WaitTimeSettingsDialog(ctk.CTkToplevel):
             font=ctk.CTkFont(size=12),
             text_color="gray"
         )
-        range_label.grid(row=3, column=0, padx=20, pady=(5, 15), sticky="ew")
+        range_label.grid(row=3, column=0, padx=20, pady=(10, 15), sticky="ew")
 
         btn_frame = ctk.CTkFrame(self, fg_color="transparent")
         btn_frame.grid(row=4, column=0, padx=20, pady=(10, 20), sticky="ew")
@@ -444,6 +521,10 @@ class CollegeApp(ctk.CTk):
             self.wait_time_value = dialog.result
             if hasattr(self, 'log_textbox') and self.log_textbox:
                 self.write_to_log(f"Wait time updated to {self.wait_time_value} seconds", "SUCCESS")
+
+    def open_help_dialog(self):
+        """Open the help dialog"""
+        HelpDialog(self)
 
     def download_status_report(self):
         """Export status records to Excel file"""
@@ -1124,7 +1205,7 @@ class CollegeApp(ctk.CTk):
         help_btn = ctk.CTkButton(
             self, text="Help", width=150, height=40,
             fg_color=DEFAULT_BLUE, hover_color=DEFAULT_HOVER_BLUE,
-            command=lambda: None  # No functionality
+            command=self.open_help_dialog
         )
         help_btn.place(relx=0.95, rely=0.05, anchor=ctk.NE)
 
