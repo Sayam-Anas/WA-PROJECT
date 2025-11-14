@@ -139,44 +139,76 @@ class HelpDialog(ctk.CTkToplevel):
 
         screen_width = self.winfo_screenwidth()
         screen_height = self.winfo_screenheight()
-        width, height = 500, 300
+        width, height = 520, 320
         x = (screen_width // 2) - (width // 2)
         y = (screen_height // 2) - (height // 2)
         self.geometry(f'{width}x{height}+{x}+{y}')
 
         self.parent = parent
         self.grid_columnconfigure(0, weight=1)
-        self.grid_rowconfigure(0, weight=0)
-        self.grid_rowconfigure(1, weight=0)
-        self.grid_rowconfigure(2, weight=1)
-        self.grid_rowconfigure(3, weight=0)
+        self.grid_rowconfigure(0, weight=0)  # Title
+        self.grid_rowconfigure(1, weight=1)  # Content
+        self.grid_rowconfigure(2, weight=0)  # Timer button
 
         title_label = ctk.CTkLabel(
             self,
             text="💡 Help & Troubleshooting",
-            font=ctk.CTkFont(size=20, weight="bold")
+            font=ctk.CTkFont(size=22, weight="bold")
         )
-        title_label.grid(row=0, column=0, padx=20, pady=(20, 15), sticky="ew")
+        title_label.grid(row=0, column=0, padx=20, pady=(25, 20), sticky="ew")
 
-        # First message
+        # Content frame for bullet points
+        content_frame = ctk.CTkFrame(self, fg_color="transparent")
+        content_frame.grid(row=1, column=0, padx=25, pady=10, sticky="nsew")
+        content_frame.grid_columnconfigure(0, weight=1)
+        content_frame.grid_rowconfigure(0, weight=1)
+        content_frame.grid_rowconfigure(1, weight=1)
+
+        # First bullet point
+        point1_frame = ctk.CTkFrame(content_frame, fg_color="transparent")
+        point1_frame.grid(row=0, column=0, sticky="w", pady=(0, 15))
+        point1_frame.grid_columnconfigure(0, weight=0)
+        point1_frame.grid_columnconfigure(1, weight=1)
+
+        bullet1 = ctk.CTkLabel(
+            point1_frame,
+            text="•",
+            font=ctk.CTkFont(size=16, weight="bold"),
+            width=20
+        )
+        bullet1.grid(row=0, column=0, sticky="nw", padx=(0, 10))
+
         message1_label = ctk.CTkLabel(
-            self,
-            text="1. If the message is not sent please increase the timer by one unit and try again...",
+            point1_frame,
+            text="If the message is not sent please increase the timer by one unit and try again...",
             font=ctk.CTkFont(size=14),
-            wraplength=450,
+            wraplength=420,
             justify="left"
         )
-        message1_label.grid(row=1, column=0, padx=20, pady=(0, 10), sticky="w")
+        message1_label.grid(row=0, column=1, sticky="w")
 
-        # Second message
+        # Second bullet point
+        point2_frame = ctk.CTkFrame(content_frame, fg_color="transparent")
+        point2_frame.grid(row=1, column=0, sticky="w", pady=(0, 10))
+        point2_frame.grid_columnconfigure(0, weight=0)
+        point2_frame.grid_columnconfigure(1, weight=1)
+
+        bullet2 = ctk.CTkLabel(
+            point2_frame,
+            text="•",
+            font=ctk.CTkFont(size=16, weight="bold"),
+            width=20
+        )
+        bullet2.grid(row=0, column=0, sticky="nw", padx=(0, 10))
+
         message2_label = ctk.CTkLabel(
-            self,
-            text="2. If the process is slow...! Please decrease the timer.",
+            point2_frame,
+            text="If the process is slow...! Please decrease the timer.",
             font=ctk.CTkFont(size=14),
-            wraplength=450,
+            wraplength=420,
             justify="left"
         )
-        message2_label.grid(row=2, column=0, padx=20, pady=(0, 20), sticky="w")
+        message2_label.grid(row=0, column=1, sticky="w")
 
         # Timer button at the bottom
         timer_btn = ctk.CTkButton(
@@ -188,7 +220,7 @@ class HelpDialog(ctk.CTkToplevel):
             hover_color=DEFAULT_HOVER_BLUE,
             command=self.open_timer_settings
         )
-        timer_btn.grid(row=3, column=0, padx=20, pady=(0, 20), sticky="ew")
+        timer_btn.grid(row=2, column=0, padx=20, pady=(15, 25), sticky="ew")
 
         self.protocol("WM_DELETE_WINDOW", self.destroy)
 
@@ -299,14 +331,14 @@ class ConfirmLogoutDialog(ctk.CTkToplevel):
 class WaitTimeSettingsDialog(ctk.CTkToplevel):
     def __init__(self, parent, current_wait_time):
         super().__init__(parent)
-        self.title("PyWhatKit Settings")
+        self.title("Wait Time Settings")
         self.transient(parent)
         self.grab_set()
         self.resizable(False, False)
 
         screen_width = self.winfo_screenwidth()
         screen_height = self.winfo_screenheight()
-        width, height = 400, 320  # Increased height to 320
+        width, height = 400, 320
         x = (screen_width // 2) - (width // 2)
         y = (screen_height // 2) - (height // 2)
         self.geometry(f'{width}x{height}+{x}+{y}')
@@ -331,7 +363,7 @@ class WaitTimeSettingsDialog(ctk.CTkToplevel):
 
         info_label = ctk.CTkLabel(
             self,
-            text="Adjust the wait time for PyWhatKit",
+            text="Adjust the wait time for message sending",
             font=ctk.CTkFont(size=13),
             text_color="gray"
         )
@@ -454,7 +486,6 @@ class CollegeApp(ctk.CTk):
     PLACEHOLDER_COLOR = "gray60"
 
     ALLOWED_EXTENSIONS = ['.csv', '.xlsx', '.xls']
-    SECRET_CODE = "JARVIS7628"
 
     def __init__(self):
         super().__init__()
@@ -465,7 +496,6 @@ class CollegeApp(ctk.CTk):
 
         # Wait time configuration
         self.wait_time_value = 10
-        self.secret_code_buffer = ""
 
         # Status tracking for export
         self.status_records = []
@@ -497,21 +527,7 @@ class CollegeApp(ctk.CTk):
         self.success_count = 0
         self.fail_count = 0
 
-        # Bind global key press for secret code
-        self.bind("<Key>", self.check_secret_code)
-
         self.show_start_page()
-
-    def check_secret_code(self, event):
-        """Check if the secret code has been typed"""
-        if event.char.isprintable():
-            self.secret_code_buffer += event.char
-            if len(self.secret_code_buffer) > len(self.SECRET_CODE):
-                self.secret_code_buffer = self.secret_code_buffer[-len(self.SECRET_CODE):]
-
-            if self.secret_code_buffer == self.SECRET_CODE:
-                self.secret_code_buffer = ""
-                self.open_wait_time_settings()
 
     def open_wait_time_settings(self):
         """Open the wait time settings dialog"""
@@ -557,7 +573,7 @@ class CollegeApp(ctk.CTk):
             self.download_button.grid_remove()
 
     # ==========================================================
-    # PAGE 1 & 2 METHODS (From Original Code)
+    # PAGE 1 & 2 METHODS
     # ==========================================================
     def show_delayed_status_message(self):
         """Updates the label 5 seconds after the browser opens with the single instruction."""
@@ -596,32 +612,10 @@ class CollegeApp(ctk.CTk):
 
     def proceed_to_utility(self):
         self.cancel_pending_timers()
-        # Add smooth transition with fade effect
-        self._smooth_transition_to_utility()
-
-    def _smooth_transition_to_utility(self):
-        """Smooth transition from page 2 to page 3 with fade effect"""
-        # Disable all interactive elements first
-        self.proceed_btn.configure(state="disabled")
-        self.open_browser_btn.configure(state="disabled")
-
-        # Update the UI to ensure all changes are rendered
-        self.update_idletasks()
-
-        # Small delay to ensure smooth rendering
-        self.after(50, self._build_utility_page)
-
-    def _build_utility_page(self):
-        """Build the utility page with pre-configuration"""
-        # Clear existing widgets
+        # Direct transition to utility page
         for widget in self.winfo_children():
             widget.destroy()
-
-        # Force update to clear the screen
-        self.update_idletasks()
-
-        # Small delay before building new page
-        self.after(50, self.show_main_utility_page)
+        self.show_main_utility_page()
 
     def focus_password(self, event=None):
         """Move focus to password field when Enter is pressed in username field"""
@@ -767,7 +761,7 @@ class CollegeApp(ctk.CTk):
         self.whatsapp_error_label.pack(pady=(10, 70))
 
     # ==========================================================
-    # PAGE 3 METHODS (From Your Provided Code)
+    # PAGE 3 METHODS
     # ==========================================================
     def _update_live_status(self, text, number, status):
         """Appends a new line to the Status box showing all sent messages and tracks status."""
@@ -1179,7 +1173,7 @@ class CollegeApp(ctk.CTk):
         self._check_send_button_state()
 
     def show_main_utility_page(self):
-        """Build page 3 with optimized rendering to prevent glitches"""
+        """Build page 3 with direct rendering"""
         # Pre-configure grid before adding widgets
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(0, weight=1)
@@ -1356,12 +1350,9 @@ class CollegeApp(ctk.CTk):
 
         self._update_live_status("", "", "")
 
-        # Force UI update before showing elements
-        self.update_idletasks()
-
-        # Initialize view with a small delay to ensure smooth rendering
-        self.after(50, lambda: self.toggle_upload_view(self.VIEW_INITIAL))
-        self.after(100, self._check_send_button_state)
+        # Initialize view
+        self.toggle_upload_view(self.VIEW_INITIAL)
+        self._check_send_button_state()
 
 
 if __name__ == "__main__":
