@@ -230,6 +230,141 @@ class HelpDialog(ctk.CTkToplevel):
         self.parent.open_wait_time_settings()
 
 
+class WaitTimeSettingsDialog(ctk.CTkToplevel):
+    def __init__(self, parent, current_wait_time):
+        super().__init__(parent)
+        self.title("Timer Settings")
+        self.transient(parent)
+        self.grab_set()
+        self.resizable(False, False)
+
+        screen_width = self.winfo_screenwidth()
+        screen_height = self.winfo_screenheight()
+        width, height = 520, 320
+        x = (screen_width // 2) - (width // 2)
+        y = (screen_height // 2) - (height // 2)
+        self.geometry(f'{width}x{height}+{x}+{y}')
+
+        self.result = None
+        self.current_value = current_wait_time
+        self.grid_columnconfigure(0, weight=1)
+
+        # Configure row weights for proper spacing
+        self.grid_rowconfigure(0, weight=0)  # Title
+        self.grid_rowconfigure(1, weight=0)  # Info
+        self.grid_rowconfigure(2, weight=1)  # Controls (expands)
+        self.grid_rowconfigure(3, weight=0)  # Buttons
+
+        title_label = ctk.CTkLabel(
+            self,
+            text="Adjust the Time for Sending the Message",
+            font=ctk.CTkFont(size=20, weight="bold")
+        )
+        title_label.grid(row=0, column=0, padx=20, pady=(25, 15), sticky="ew")
+
+        info_label = ctk.CTkLabel(
+            self,
+            text="Set the wait time between sending messages",
+            font=ctk.CTkFont(size=14),
+            text_color="gray"
+        )
+        info_label.grid(row=1, column=0, padx=20, pady=(0, 20), sticky="ew")
+
+        # Control frame with increment/decrement buttons
+        control_frame = ctk.CTkFrame(self, fg_color="transparent")
+        control_frame.grid(row=2, column=0, padx=20, pady=20, sticky="nsew")
+        control_frame.grid_columnconfigure((0, 1, 2), weight=1)
+        control_frame.grid_rowconfigure(0, weight=1)
+
+        self.decrement_btn = ctk.CTkButton(
+            control_frame,
+            text="−",
+            width=60,
+            height=60,
+            font=ctk.CTkFont(size=30, weight="bold"),
+            fg_color=DEFAULT_BLUE,
+            hover_color=DEFAULT_HOVER_BLUE,
+            command=self.decrement_value
+        )
+        self.decrement_btn.grid(row=0, column=0, padx=5)
+
+        self.value_label = ctk.CTkLabel(
+            control_frame,
+            text=f"{self.current_value}",
+            font=ctk.CTkFont(size=36, weight="bold"),
+            width=120
+        )
+        self.value_label.grid(row=0, column=1, padx=10)
+
+        self.increment_btn = ctk.CTkButton(
+            control_frame,
+            text="+",
+            width=60,
+            height=60,
+            font=ctk.CTkFont(size=30, weight="bold"),
+            fg_color=DEFAULT_BLUE,
+            hover_color=DEFAULT_HOVER_BLUE,
+            command=self.increment_value
+        )
+        self.increment_btn.grid(row=0, column=2, padx=5)
+
+        btn_frame = ctk.CTkFrame(self, fg_color="transparent")
+        btn_frame.grid(row=3, column=0, padx=20, pady=(15, 25), sticky="ew")
+        btn_frame.grid_columnconfigure((0, 1), weight=1)
+
+        cancel_btn = ctk.CTkButton(
+            btn_frame,
+            text="Cancel",
+            height=40,
+            command=self.on_cancel
+        )
+        cancel_btn.grid(row=0, column=0, padx=(0, 10), sticky="ew")
+
+        save_btn = ctk.CTkButton(
+            btn_frame,
+            text="Save",
+            height=40,
+            fg_color=SEND_GREEN,
+            hover_color=SEND_HOVER_GREEN,
+            command=self.on_save
+        )
+        save_btn.grid(row=0, column=1, padx=(10, 0), sticky="ew")
+
+        self.protocol("WM_DELETE_WINDOW", self.on_cancel)
+        self.update_button_states()
+
+    def increment_value(self):
+        if self.current_value < 100:
+            self.current_value += 1
+            self.value_label.configure(text=f"{self.current_value}")
+            self.update_button_states()
+
+    def decrement_value(self):
+        if self.current_value > 7:
+            self.current_value -= 1
+            self.value_label.configure(text=f"{self.current_value}")
+            self.update_button_states()
+
+    def update_button_states(self):
+        if self.current_value <= 7:
+            self.decrement_btn.configure(state="disabled", fg_color="gray")
+        else:
+            self.decrement_btn.configure(state="normal", fg_color=DEFAULT_BLUE)
+
+        if self.current_value >= 100:
+            self.increment_btn.configure(state="disabled", fg_color="gray")
+        else:
+            self.increment_btn.configure(state="normal", fg_color=DEFAULT_BLUE)
+
+    def on_save(self):
+        self.result = self.current_value
+        self.destroy()
+
+    def on_cancel(self):
+        self.result = None
+        self.destroy()
+
+
 class ConfirmSendDialog(ctk.CTkToplevel):
     def __init__(self, parent, send_command):
         super().__init__(parent)
@@ -325,150 +460,6 @@ class ConfirmLogoutDialog(ctk.CTkToplevel):
         self.command()
 
     def on_cancel(self):
-        self.destroy()
-
-
-class WaitTimeSettingsDialog(ctk.CTkToplevel):
-    def __init__(self, parent, current_wait_time):
-        super().__init__(parent)
-        self.title("Wait Time Settings")
-        self.transient(parent)
-        self.grab_set()
-        self.resizable(False, False)
-
-        screen_width = self.winfo_screenwidth()
-        screen_height = self.winfo_screenheight()
-        width, height = 400, 320
-        x = (screen_width // 2) - (width // 2)
-        y = (screen_height // 2) - (height // 2)
-        self.geometry(f'{width}x{height}+{x}+{y}')
-
-        self.result = None
-        self.current_value = current_wait_time
-        self.grid_columnconfigure(0, weight=1)
-
-        # Configure row weights for proper spacing
-        self.grid_rowconfigure(0, weight=0)  # Title
-        self.grid_rowconfigure(1, weight=0)  # Info
-        self.grid_rowconfigure(2, weight=1)  # Controls (expands)
-        self.grid_rowconfigure(3, weight=0)  # Range label
-        self.grid_rowconfigure(4, weight=0)  # Buttons
-
-        title_label = ctk.CTkLabel(
-            self,
-            text="⚙️ Wait Time Configuration",
-            font=ctk.CTkFont(size=20, weight="bold")
-        )
-        title_label.grid(row=0, column=0, padx=20, pady=(20, 10), sticky="ew")
-
-        info_label = ctk.CTkLabel(
-            self,
-            text="Adjust the wait time for message sending",
-            font=ctk.CTkFont(size=13),
-            text_color="gray"
-        )
-        info_label.grid(row=1, column=0, padx=20, pady=(0, 10), sticky="ew")
-
-        # Control frame with increment/decrement buttons
-        control_frame = ctk.CTkFrame(self, fg_color="transparent")
-        control_frame.grid(row=2, column=0, padx=20, pady=20, sticky="nsew")
-        control_frame.grid_columnconfigure((0, 1, 2), weight=1)
-        control_frame.grid_rowconfigure(0, weight=1)
-
-        self.decrement_btn = ctk.CTkButton(
-            control_frame,
-            text="−",
-            width=60,
-            height=60,
-            font=ctk.CTkFont(size=30, weight="bold"),
-            fg_color=DEFAULT_BLUE,
-            hover_color=DEFAULT_HOVER_BLUE,
-            command=self.decrement_value
-        )
-        self.decrement_btn.grid(row=0, column=0, padx=5)
-
-        self.value_label = ctk.CTkLabel(
-            control_frame,
-            text=f"{self.current_value}",
-            font=ctk.CTkFont(size=36, weight="bold"),
-            width=120
-        )
-        self.value_label.grid(row=0, column=1, padx=10)
-
-        self.increment_btn = ctk.CTkButton(
-            control_frame,
-            text="+",
-            width=60,
-            height=60,
-            font=ctk.CTkFont(size=30, weight="bold"),
-            fg_color=DEFAULT_BLUE,
-            hover_color=DEFAULT_HOVER_BLUE,
-            command=self.increment_value
-        )
-        self.increment_btn.grid(row=0, column=2, padx=5)
-
-        range_label = ctk.CTkLabel(
-            self,
-            text="Range: 7 - 100 seconds",
-            font=ctk.CTkFont(size=12),
-            text_color="gray"
-        )
-        range_label.grid(row=3, column=0, padx=20, pady=(10, 15), sticky="ew")
-
-        btn_frame = ctk.CTkFrame(self, fg_color="transparent")
-        btn_frame.grid(row=4, column=0, padx=20, pady=(10, 20), sticky="ew")
-        btn_frame.grid_columnconfigure((0, 1), weight=1)
-
-        cancel_btn = ctk.CTkButton(
-            btn_frame,
-            text="Cancel",
-            height=40,
-            command=self.on_cancel
-        )
-        cancel_btn.grid(row=0, column=0, padx=(0, 10), sticky="ew")
-
-        save_btn = ctk.CTkButton(
-            btn_frame,
-            text="Save",
-            height=40,
-            fg_color=SEND_GREEN,
-            hover_color=SEND_HOVER_GREEN,
-            command=self.on_save
-        )
-        save_btn.grid(row=0, column=1, padx=(10, 0), sticky="ew")
-
-        self.protocol("WM_DELETE_WINDOW", self.on_cancel)
-        self.update_button_states()
-
-    def increment_value(self):
-        if self.current_value < 100:
-            self.current_value += 1
-            self.value_label.configure(text=f"{self.current_value}")
-            self.update_button_states()
-
-    def decrement_value(self):
-        if self.current_value > 7:
-            self.current_value -= 1
-            self.value_label.configure(text=f"{self.current_value}")
-            self.update_button_states()
-
-    def update_button_states(self):
-        if self.current_value <= 7:
-            self.decrement_btn.configure(state="disabled", fg_color="gray")
-        else:
-            self.decrement_btn.configure(state="normal", fg_color=DEFAULT_BLUE)
-
-        if self.current_value >= 100:
-            self.increment_btn.configure(state="disabled", fg_color="gray")
-        else:
-            self.increment_btn.configure(state="normal", fg_color=DEFAULT_BLUE)
-
-    def on_save(self):
-        self.result = self.current_value
-        self.destroy()
-
-    def on_cancel(self):
-        self.result = None
         self.destroy()
 
 
