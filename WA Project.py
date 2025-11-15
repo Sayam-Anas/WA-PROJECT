@@ -94,6 +94,7 @@ def send_whatsapp_messages_threaded(app_instance: ctk.CTk, formatted_numbers: Li
             return
 
         number = formatted_numbers[i]
+        start_time = time.time()  # Record start time for this message
 
         app_instance.after(0, lambda n=number, idx=i: app_instance.write_to_log(
             f"Attempting to send message {idx + 1}/{total_numbers} to: {n}", "INFO"))
@@ -106,8 +107,11 @@ def send_whatsapp_messages_threaded(app_instance: ctk.CTk, formatted_numbers: Li
                 tab_close=True,
                 close_time=3
             )
-            timestamp = datetime.now().strftime("%H:%M:%S")
-            status_text = f"[{timestamp}] ✅ {number}"
+            end_time = time.time()  # Record end time
+            duration = int(end_time - start_time)  # Calculate duration in seconds
+
+            current_time = datetime.now().strftime("%I:%M")  # 12-hour format without seconds
+            status_text = f"[{current_time}]({duration} sec)✅ {number}"
             app_instance.after(0, lambda t=status_text, n=number: app_instance._update_live_status(t, n, "Sent"))
             app_instance.after(0, lambda: setattr(app_instance, 'success_count', app_instance.success_count + 1))
             app_instance.current_index = i + 1
@@ -115,8 +119,11 @@ def send_whatsapp_messages_threaded(app_instance: ctk.CTk, formatted_numbers: Li
             time.sleep(1)
 
         except Exception as e:
-            timestamp = datetime.now().strftime("%H:%M:%S")
-            status_text = f"[{timestamp}] ❌ {number} - {str(e)[:30]}"
+            end_time = time.time()  # Record end time for failed attempt
+            duration = int(end_time - start_time)  # Calculate duration in seconds
+
+            current_time = datetime.now().strftime("%I:%M")  # 12-hour format without seconds
+            status_text = f"[{current_time}]({duration} sec)❌ {number} - {str(e)[:30]}"
             app_instance.after(0, lambda t=status_text, n=number: app_instance._update_live_status(t, n, "Not Sent"))
             app_instance.after(0, lambda: setattr(app_instance, 'fail_count', app_instance.fail_count + 1))
             app_instance.current_index = i + 1
@@ -505,6 +512,7 @@ class CollegeApp(ctk.CTk):
         self.upload_view_elements = {}
         self.manual_entry_textbox = None
         self.download_button = None
+        self.help_button = None  # Help button reference
 
         # State Variables for Page 3
         self.uploaded_file_path: Optional[str] = None
@@ -562,6 +570,16 @@ class CollegeApp(ctk.CTk):
         """Hide the download button"""
         if self.download_button:
             self.download_button.grid_remove()
+
+    def show_help_button(self):
+        """Show the help button"""
+        if self.help_button:
+            self.help_button.place(relx=0.95, rely=0.05, anchor=ctk.NE)
+
+    def hide_help_button(self):
+        """Hide the help button"""
+        if self.help_button:
+            self.help_button.place_forget()
 
     # ==========================================================
     # PAGE 1 & 2 METHODS
@@ -856,24 +874,32 @@ class CollegeApp(ctk.CTk):
             if self.sending_state == "SENDING":
                 button.configure(state="normal", text="Stop", fg_color=LOGOUT_RED, hover_color="#C62828",
                                  text_color="white")
+                self.hide_help_button()
+                self.hide_download_button()
 
             elif self.sending_state == "PAUSED":
                 remaining = len(self.formatted_numbers_list) - self.current_index
                 button.configure(state="normal", text=f"Continue ({remaining} left)",
                                  fg_color="#FBC02D", hover_color="#F9A825", text_color="black")
+                self.show_help_button()
                 self.show_download_button()
 
             elif self.sending_state == "DONE":
                 button.configure(state="disabled", text="Done ✅",
                                  fg_color=SEND_GREEN, hover_color=SEND_HOVER_GREEN, text_color="white")
+                self.show_help_button()
                 self.show_download_button()
 
             elif message_is_ready and numbers_are_ready and self.sending_state == "IDLE":
                 button.configure(state="normal", text="Send Message",
                                  fg_color=SEND_GREEN, hover_color=SEND_HOVER_GREEN, text_color="white")
+                self.hide_help_button()
+                self.hide_download_button()
 
             else:
                 button.configure(state="disabled", text="Send Message", fg_color="gray", text_color="white")
+                self.hide_help_button()
+                self.hide_download_button()
 
     def _handle_send_paused(self, stopped_index):
         """Called by the background thread when it pauses."""
@@ -914,6 +940,7 @@ class CollegeApp(ctk.CTk):
                 self.status_textbox.delete("1.0", "end")
                 self.status_textbox.configure(state="disabled")
             self.hide_download_button()
+            self.hide_help_button()
 
         self.stop_event.clear()
         self.sending_state = "SENDING"
@@ -1108,6 +1135,7 @@ class CollegeApp(ctk.CTk):
                 self._update_numbers_textbox()
                 self.write_to_log("Number list cleared. Ready for new input.", "INFO")
                 self.hide_download_button()
+                self.hide_help_button()
 
         if view_state == self.VIEW_INITIAL:
             if self.back_button_upload:
@@ -1186,13 +1214,14 @@ class CollegeApp(ctk.CTk):
         )
         logout_btn.place(relx=0.05, rely=0.05, anchor=ctk.NW)
 
-        # Help button (right side) - same size as logout button
-        help_btn = ctk.CTkButton(
+        # Help button (right side) - same size as logout button, initially hidden
+        self.help_button = ctk.CTkButton(
             self, text="Help", width=150, height=40,
             fg_color=DEFAULT_BLUE, hover_color=DEFAULT_HOVER_BLUE,
             command=self.open_help_dialog
         )
-        help_btn.place(relx=0.95, rely=0.05, anchor=ctk.NE)
+        # Initially hidden - will be shown only when paused or completed
+        self.hide_help_button()
 
         utility_panel = ctk.CTkFrame(content_frame, fg_color="transparent")
         utility_panel.grid(row=0, column=0, sticky="nsew", padx=(20, 10), pady=(20, 20))
