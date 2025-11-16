@@ -79,7 +79,8 @@ def extract_and_format_phone_numbers(df: pd.DataFrame) -> List[str]:
 # MESSAGE SENDING UTILITY (Threaded)
 # ==========================================================
 def send_whatsapp_messages_threaded(app_instance: ctk.CTk, formatted_numbers: List[str], message_content: str,
-                                    start_index: int, stop_event: threading.Event) -> None:
+                                    start_index: int, stop_event: threading.Event,
+                                    image_path: Optional[str] = None) -> None:
     """
     Sends messages sequentially in a separate thread, respecting the stop_event.
     """
@@ -96,22 +97,52 @@ def send_whatsapp_messages_threaded(app_instance: ctk.CTk, formatted_numbers: Li
         number = formatted_numbers[i]
         start_time = time.time()  # Record start time for this message
 
-        app_instance.after(0, lambda n=number, idx=i: app_instance.write_to_log(
-            f"Attempting to send message {idx + 1}/{total_numbers} to: {n}", "INFO"))
+        if image_path:
+            app_instance.after(0, lambda n=number, idx=i: app_instance.write_to_log(
+                f"Attempting to send image {idx + 1}/{total_numbers} to: {n}", "INFO"))
+        else:
+            app_instance.after(0, lambda n=number, idx=i: app_instance.write_to_log(
+                f"Attempting to send message {idx + 1}/{total_numbers} to: {n}", "INFO"))
 
         try:
-            kit.sendwhatmsg_instantly(
-                number,
-                message_content,
-                wait_time=app_instance.wait_time_value,
-                tab_close=True,
-                close_time=3
-            )
+            if image_path:
+                # Send image with optional caption
+                if message_content.strip():
+                    kit.sendwhats_image(
+                        number,
+                        image_path,
+                        message_content,
+                        wait_time=app_instance.wait_time_value,
+                        tab_close=True,
+                        close_time=3
+                    )
+                else:
+                    kit.sendwhats_image(
+                        number,
+                        image_path,
+                        "",
+                        wait_time=app_instance.wait_time_value,
+                        tab_close=True,
+                        close_time=3
+                    )
+            else:
+                # Send text message only
+                kit.sendwhatmsg_instantly(
+                    number,
+                    message_content,
+                    wait_time=app_instance.wait_time_value,
+                    tab_close=True,
+                    close_time=3
+                )
+
             end_time = time.time()  # Record end time
             duration = int(end_time - start_time)  # Calculate duration in seconds
 
             current_time = datetime.now().strftime("%I:%M")  # 12-hour format without seconds
-            status_text = f"[{current_time}]({duration} sec)✅ {number}"
+            if image_path:
+                status_text = f"[{current_time}]({duration} sec)🖼️✅ {number}"
+            else:
+                status_text = f"[{current_time}]({duration} sec)✅ {number}"
             app_instance.after(0, lambda t=status_text, n=number: app_instance._update_live_status(t, n, "Sent"))
             app_instance.after(0, lambda: setattr(app_instance, 'success_count', app_instance.success_count + 1))
             app_instance.current_index = i + 1
@@ -373,7 +404,7 @@ class WaitTimeSettingsDialog(ctk.CTkToplevel):
 
 
 class ConfirmSendDialog(ctk.CTkToplevel):
-    def __init__(self, parent, send_command):
+    def __init__(self, parent, send_command, has_image=False):
         super().__init__(parent)
         self.title("Confirm Send")
         self.transient(parent)
@@ -382,15 +413,21 @@ class ConfirmSendDialog(ctk.CTkToplevel):
 
         screen_width = self.winfo_screenwidth()
         screen_height = self.winfo_screenheight()
-        width, height = 400, 140
+        width, height = 400, 160
         x = (screen_width // 2) - (width // 2)
         y = (screen_height // 2) - (height // 2)
         self.geometry(f'{width}x{height}+{x}+{y}')
 
         self.send_command = send_command
+        self.has_image = has_image
         self.grid_columnconfigure(0, weight=1)
 
-        message_label = ctk.CTkLabel(self, text="Confirm to send Message !",
+        if has_image:
+            message_text = "Confirm to send Image with Message!"
+        else:
+            message_text = "Confirm to send Message!"
+
+        message_label = ctk.CTkLabel(self, text=message_text,
                                      font=ctk.CTkFont(size=16))
         message_label.grid(row=0, column=0, padx=20, pady=(20, 10), sticky="ew")
 
@@ -484,6 +521,7 @@ class CollegeApp(ctk.CTk):
     PLACEHOLDER_COLOR = "gray60"
 
     ALLOWED_EXTENSIONS = ['.csv', '.xlsx', '.xls']
+    ALLOWED_IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp']
 
     def __init__(self):
         super().__init__()
@@ -494,6 +532,9 @@ class CollegeApp(ctk.CTk):
 
         # Wait time configuration
         self.wait_time_value = 10
+
+        # Image configuration
+        self.selected_image_path = None
 
         # Status tracking for export
         self.status_records = []
@@ -513,6 +554,9 @@ class CollegeApp(ctk.CTk):
         self.manual_entry_textbox = None
         self.download_button = None
         self.help_button = None  # Help button reference
+        self.image_button = None  # Image button reference
+        self.image_label = None  # Image label reference
+        self.remove_image_button = None  # Remove image button
 
         # State Variables for Page 3
         self.uploaded_file_path: Optional[str] = None
@@ -580,6 +624,48 @@ class CollegeApp(ctk.CTk):
         """Hide the help button"""
         if self.help_button:
             self.help_button.place_forget()
+
+    def select_image(self):
+        """Open file dialog to select an image"""
+        file_path = filedialog.askopenfilename(
+            title="Select Image",
+            filetypes=[
+                ("Image files", "*.jpg *.jpeg *.png *.gif *.bmp *.webp"),
+                ("JPEG files", "*.jpg *.jpeg"),
+                ("PNG files", "*.png"),
+                ("All files", "*.*")
+            ]
+        )
+
+        if file_path:
+            self.selected_image_path = file_path
+            image_name = os.path.basename(file_path)
+
+            # Update image label
+            if self.image_label:
+                self.image_label.configure(text=f"📷 {image_name}", text_color=SEND_GREEN)
+
+            # Show remove button
+            if self.remove_image_button:
+                self.remove_image_button.grid()
+
+            self.write_to_log(f"Image selected: {image_name}", "SUCCESS")
+            self._check_send_button_state()
+
+    def remove_image(self):
+        """Remove the selected image"""
+        self.selected_image_path = None
+
+        # Reset image label
+        if self.image_label:
+            self.image_label.configure(text="No image selected", text_color="gray")
+
+        # Hide remove button
+        if self.remove_image_button:
+            self.remove_image_button.grid_remove()
+
+        self.write_to_log("Image removed", "INFO")
+        self._check_send_button_state()
 
     # ==========================================================
     # PAGE 1 & 2 METHODS
@@ -856,7 +942,7 @@ class CollegeApp(ctk.CTk):
         if not self.message_textbox: return
 
         current_text = self.message_textbox.get("1.0", "end-1c").strip()
-        message_is_ready = bool(current_text)
+        message_is_ready = bool(current_text) or bool(self.selected_image_path)
         numbers_are_ready = bool(self.formatted_numbers_list)
 
         if hasattr(self, 'main_action_button') and self.main_action_button:
@@ -872,26 +958,41 @@ class CollegeApp(ctk.CTk):
                     return
 
             if self.sending_state == "SENDING":
-                button.configure(state="normal", text="Stop", fg_color=LOGOUT_RED, hover_color="#C62828",
+                button_text = "Stop"
+                if self.selected_image_path:
+                    button_text = "Stop Image Sending"
+                button.configure(state="normal", text=button_text, fg_color=LOGOUT_RED, hover_color="#C62828",
                                  text_color="white")
                 self.hide_help_button()
                 self.hide_download_button()
 
             elif self.sending_state == "PAUSED":
                 remaining = len(self.formatted_numbers_list) - self.current_index
-                button.configure(state="normal", text=f"Continue ({remaining} left)",
+                button_text = f"Continue ({remaining} left)"
+                if self.selected_image_path:
+                    button_text = f"Continue Image ({remaining} left)"
+                button.configure(state="normal", text=button_text,
                                  fg_color="#FBC02D", hover_color="#F9A825", text_color="black")
                 self.show_help_button()
                 self.show_download_button()
 
             elif self.sending_state == "DONE":
-                button.configure(state="disabled", text="Done ✅",
+                button_text = "Done ✅"
+                if self.selected_image_path:
+                    button_text = "Image Sent ✅"
+                button.configure(state="disabled", text=button_text,
                                  fg_color=SEND_GREEN, hover_color=SEND_HOVER_GREEN, text_color="white")
                 self.show_help_button()
                 self.show_download_button()
 
             elif message_is_ready and numbers_are_ready and self.sending_state == "IDLE":
-                button.configure(state="normal", text="Send Message",
+                button_text = "Send Message"
+                if self.selected_image_path:
+                    if current_text:
+                        button_text = "Send Image with Text"
+                    else:
+                        button_text = "Send Image"
+                button.configure(state="normal", text=button_text,
                                  fg_color=SEND_GREEN, hover_color=SEND_HOVER_GREEN, text_color="white")
                 self.hide_help_button()
                 self.hide_download_button()
@@ -916,7 +1017,10 @@ class CollegeApp(ctk.CTk):
 
     def _handle_send_completed(self):
         """Called by the background thread when it finishes all messages."""
-        self.write_to_log(f"--- Message Sending Complete ---", "INFO")
+        if self.selected_image_path:
+            self.write_to_log(f"--- Image Sending Complete ---", "INFO")
+        else:
+            self.write_to_log(f"--- Message Sending Complete ---", "INFO")
         self.write_to_log(f"Summary: {self.success_count} successful, {self.fail_count} failed.", "INFO")
         self.current_index = 0
         self.sending_state = "DONE"
@@ -925,8 +1029,12 @@ class CollegeApp(ctk.CTk):
 
     def start_sending(self):
         """Starts or Resumes the sending process in a new thread."""
-        if not self.formatted_numbers_list or not self.message_textbox.get("1.0", "end-1c").strip():
-            self.write_to_log("Cannot start: Missing message or numbers.", "ERROR")
+        if not self.formatted_numbers_list:
+            self.write_to_log("Cannot start: No numbers available.", "ERROR")
+            return
+
+        if not self.message_textbox.get("1.0", "end-1c").strip() and not self.selected_image_path:
+            self.write_to_log("Cannot start: Missing message or image.", "ERROR")
             return
 
         if self.sending_state == "DONE":
@@ -948,11 +1056,15 @@ class CollegeApp(ctk.CTk):
         start_idx = self.current_index
         message_content = self.message_textbox.get("1.0", "end-1c").strip()
 
-        self.write_to_log(f"Starting or resuming send process...", "INFO")
+        if self.selected_image_path:
+            self.write_to_log(f"Starting image send process...", "INFO")
+        else:
+            self.write_to_log(f"Starting message send process...", "INFO")
 
         self.send_thread = threading.Thread(
             target=send_whatsapp_messages_threaded,
-            args=(self, self.formatted_numbers_list, message_content, start_idx, self.stop_event),
+            args=(self, self.formatted_numbers_list, message_content, start_idx, self.stop_event,
+                  self.selected_image_path),
             daemon=True
         )
         self.send_thread.start()
@@ -967,10 +1079,15 @@ class CollegeApp(ctk.CTk):
     def handle_send_or_control(self):
         """The main command for the Send/Stop/Continue button."""
         if self.sending_state == "IDLE" or self.sending_state == "DONE":
-            if not self.formatted_numbers_list or not self.message_textbox.get("1.0", "end-1c").strip():
-                self.write_to_log("Cannot start: Missing message or numbers.", "ERROR")
+            if not self.formatted_numbers_list:
+                self.write_to_log("Cannot start: No numbers available.", "ERROR")
                 return
-            ConfirmSendDialog(self, send_command=self.start_sending)
+            if not self.message_textbox.get("1.0", "end-1c").strip() and not self.selected_image_path:
+                self.write_to_log("Cannot start: Missing message or image.", "ERROR")
+                return
+
+            has_image = bool(self.selected_image_path)
+            ConfirmSendDialog(self, send_command=self.start_sending, has_image=has_image)
 
         elif self.sending_state == "SENDING":
             self.pause_sending()
@@ -1234,9 +1351,29 @@ class CollegeApp(ctk.CTk):
         message_frame.grid(row=0, column=0, sticky="nsew", pady=(0, 10))
         message_frame.grid_rowconfigure(1, weight=1)
         message_frame.grid_columnconfigure(0, weight=1)
-        ctk.CTkLabel(message_frame, text="Message", font=ctk.CTkFont(size=18, weight="bold")).grid(row=0, column=0,
-                                                                                                   pady=5, padx=10,
-                                                                                                   sticky="w")
+
+        # Message header with image button
+        message_header = ctk.CTkFrame(message_frame, fg_color="transparent")
+        message_header.grid(row=0, column=0, sticky="ew", pady=5, padx=10)
+        message_header.grid_columnconfigure(0, weight=1)
+        message_header.grid_columnconfigure(1, weight=0)
+
+        ctk.CTkLabel(message_header, text="Message", font=ctk.CTkFont(size=18, weight="bold")).grid(row=0, column=0,
+                                                                                                    sticky="w")
+
+        # Image button
+        self.image_button = ctk.CTkButton(
+            message_header,
+            text="+ Image",
+            width=80,
+            height=30,
+            font=ctk.CTkFont(size=12, weight="bold"),
+            fg_color=DEFAULT_BLUE,
+            hover_color=DEFAULT_HOVER_BLUE,
+            command=self.select_image
+        )
+        self.image_button.grid(row=0, column=1, padx=(10, 0))
+
         self.message_textbox = ctk.CTkTextbox(message_frame, wrap="word", font=ctk.CTkFont(size=14))
         self.message_textbox.grid(row=1, column=0, sticky="nsew", padx=10, pady=(0, 10))
         self.message_textbox.bind("<FocusOut>", self._check_send_button_state)
@@ -1320,13 +1457,40 @@ class CollegeApp(ctk.CTk):
         send_frame.grid(row=2, column=0, sticky="ew", pady=(10, 0))
         send_frame.grid_columnconfigure(0, weight=1)
 
+        # Image info frame
+        image_info_frame = ctk.CTkFrame(send_frame, fg_color="transparent")
+        image_info_frame.grid(row=0, column=0, sticky="ew", pady=(0, 5))
+        image_info_frame.grid_columnconfigure(0, weight=1)
+        image_info_frame.grid_columnconfigure(1, weight=0)
+
+        self.image_label = ctk.CTkLabel(
+            image_info_frame,
+            text="No image selected",
+            font=ctk.CTkFont(size=12),
+            text_color="gray"
+        )
+        self.image_label.grid(row=0, column=0, sticky="w", padx=10)
+
+        self.remove_image_button = ctk.CTkButton(
+            image_info_frame,
+            text="✕",
+            width=30,
+            height=25,
+            font=ctk.CTkFont(size=10, weight="bold"),
+            fg_color=LOGOUT_RED,
+            hover_color="#C62828",
+            command=self.remove_image
+        )
+        self.remove_image_button.grid(row=0, column=1, padx=(0, 10))
+        self.remove_image_button.grid_remove()  # Hide initially
+
         self.main_action_button = ctk.CTkButton(
             send_frame, text="Send Message", font=ctk.CTkFont(size=20, weight="bold"),
             height=60, corner_radius=15,
             command=self.handle_send_or_control,
             fg_color=SEND_GREEN, hover_color=SEND_HOVER_GREEN
         )
-        self.main_action_button.grid(row=0, column=0, padx=10, pady=0, sticky="ew")
+        self.main_action_button.grid(row=1, column=0, padx=10, pady=0, sticky="ew")
 
         status_log_frame = ctk.CTkFrame(content_frame, corner_radius=10, fg_color=self.cget("fg_color"))
         status_log_frame.grid(row=0, column=1, sticky="nsew", padx=(10, 20), pady=(20, 20))
