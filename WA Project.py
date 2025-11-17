@@ -312,14 +312,14 @@ class HelpDialog(ctk.CTkToplevel):
         )
         message2_label.grid(row=0, column=1, sticky="w")
 
-        # Timer button at the bottom
+        # Timer button at the bottom - CHANGED TO PURPLE
         timer_btn = ctk.CTkButton(
             self,
             text="Timer",
             font=ctk.CTkFont(size=16, weight="bold"),
             height=40,
-            fg_color=DEFAULT_BLUE,
-            hover_color=DEFAULT_HOVER_BLUE,
+            fg_color=OCR_PURPLE,  # CHANGED TO PURPLE
+            hover_color=OCR_HOVER_PURPLE,  # CHANGED TO PURPLE
             command=self.open_timer_settings
         )
         timer_btn.grid(row=2, column=0, padx=20, pady=(15, 25), sticky="ew")
@@ -384,8 +384,8 @@ class WaitTimeSettingsDialog(ctk.CTkToplevel):
             width=60,
             height=60,
             font=ctk.CTkFont(size=30, weight="bold"),
-            fg_color=DEFAULT_BLUE,
-            hover_color=DEFAULT_HOVER_BLUE,
+            fg_color=OCR_PURPLE,  # CHANGED TO PURPLE
+            hover_color=OCR_HOVER_PURPLE,  # CHANGED TO PURPLE
             command=self.decrement_value
         )
         self.decrement_btn.grid(row=0, column=0, padx=5)
@@ -404,8 +404,8 @@ class WaitTimeSettingsDialog(ctk.CTkToplevel):
             width=60,
             height=60,
             font=ctk.CTkFont(size=30, weight="bold"),
-            fg_color=DEFAULT_BLUE,
-            hover_color=DEFAULT_HOVER_BLUE,
+            fg_color=OCR_PURPLE,  # CHANGED TO PURPLE
+            hover_color=OCR_HOVER_PURPLE,  # CHANGED TO PURPLE
             command=self.increment_value
         )
         self.increment_btn.grid(row=0, column=2, padx=5)
@@ -451,12 +451,12 @@ class WaitTimeSettingsDialog(ctk.CTkToplevel):
         if self.current_value <= 7:
             self.decrement_btn.configure(state="disabled", fg_color="gray")
         else:
-            self.decrement_btn.configure(state="normal", fg_color=DEFAULT_BLUE)
+            self.decrement_btn.configure(state="normal", fg_color=OCR_PURPLE)  # CHANGED TO PURPLE
 
         if self.current_value >= 100:
             self.increment_btn.configure(state="disabled", fg_color="gray")
         else:
-            self.increment_btn.configure(state="normal", fg_color=DEFAULT_BLUE)
+            self.increment_btn.configure(state="normal", fg_color=OCR_PURPLE)  # CHANGED TO PURPLE
 
     def on_save(self):
         self.result = self.current_value
@@ -581,7 +581,7 @@ class CollegeApp(ctk.CTk):
     VIEW_UPLOAD = 1
     VIEW_MANUAL = 2
 
-    MANUAL_ENTRY_PLACEHOLDER = "Enter Numbers One Per Line)"
+    MANUAL_ENTRY_PLACEHOLDER = "Enter Numbers One Per Line..."
     PLACEHOLDER_COLOR = "gray60"
 
     ALLOWED_EXTENSIONS = ['.csv', '.xlsx', '.xls']
@@ -619,7 +619,6 @@ class CollegeApp(ctk.CTk):
         self.download_button = None
         self.help_button = None  # Help button reference
         self.image_button = None  # Image button reference
-        self.image_label = None  # Image label reference
         self.remove_image_button = None  # Remove image button
         self.ocr_image_button = None  # OCR image button
 
@@ -740,7 +739,7 @@ class CollegeApp(ctk.CTk):
             self.help_button.place_forget()
 
     def select_image(self):
-        """Open file dialog to select an image"""
+        """Open file dialog to select a single image"""
         file_path = filedialog.askopenfilename(
             title="Select Image to Send",
             filetypes=[
@@ -755,10 +754,6 @@ class CollegeApp(ctk.CTk):
             self.selected_image_path = file_path
             image_name = os.path.basename(file_path)
 
-            # Update image label
-            if self.image_label:
-                self.image_label.configure(text=f"📷 {image_name}", text_color=SEND_GREEN)
-
             # Show remove button
             if self.remove_image_button:
                 self.remove_image_button.grid()
@@ -769,10 +764,6 @@ class CollegeApp(ctk.CTk):
     def remove_image(self):
         """Remove the selected image"""
         self.selected_image_path = None
-
-        # Reset image label
-        if self.image_label:
-            self.image_label.configure(text="No image selected", text_color="gray")
 
         # Hide remove button
         if self.remove_image_button:
@@ -1214,7 +1205,7 @@ class CollegeApp(ctk.CTk):
         self.upload_numbers_command()
 
     def upload_numbers_command(self):
-        """Opens the file dialog."""
+        """Opens the file dialog directly"""
         file_path = filedialog.askopenfilename(
             filetypes=[
                 ("All supported files", "*.csv *.xlsx *.xls"),
@@ -1226,8 +1217,6 @@ class CollegeApp(ctk.CTk):
         )
         if file_path:
             self.validate_and_load_file(file_path)
-        else:
-            self.toggle_upload_view(self.VIEW_UPLOAD)
 
     def validate_and_load_file(self, file_path: str) -> bool:
         if not file_path: return False
@@ -1251,22 +1240,16 @@ class CollegeApp(ctk.CTk):
             self.uploaded_file_path = file_path
             self.contact_data = df
 
-            drop_zone_text = f"Selected File:\n\n{filename}\n({len(self.formatted_numbers_list)} unique numbers ready)"
-            text_color = SEND_GREEN if self.formatted_numbers_list else LOGOUT_RED
-
-            self.upload_view_elements['drop_zone_label'].configure(text=drop_zone_text, text_color=text_color)
-            self.write_to_log(f"Successfully loaded {len(self.formatted_numbers_list)} numbers.", level="SUCCESS")
+            self.write_to_log(f"Successfully loaded {len(self.formatted_numbers_list)} numbers from {filename}.", level="SUCCESS")
             self._update_numbers_textbox()
 
+            # Always stay in initial view after file selection
             self.toggle_upload_view(self.VIEW_INITIAL)
             return True
 
         except Exception as e:
             self.write_to_log(f"File process failed: {e}", level="ERROR")
-            self.upload_view_elements['drop_zone_label'].configure(text="Click to Browse Excel/CSV File",
-                                                                   text_color="gray50")
             self._update_numbers_textbox()
-            self.main_action_button.configure(text="Browse File")
             return False
 
     def process_entered_numbers(self):
@@ -1386,21 +1369,10 @@ class CollegeApp(ctk.CTk):
                 self.back_button_upload.grid(row=0, column=0, padx=10, pady=5, sticky="w")
 
             if view_state == self.VIEW_UPLOAD:
-                drop_zone_text = "Click to Browse Excel/CSV File"
-                text_color = "gray50"
-
-                self.upload_view_elements['drop_zone_label'].configure(text=drop_zone_text, text_color=text_color)
-
-                self.upload_buttons_frame.rowconfigure(1, weight=1)
-                self.upload_buttons_frame.rowconfigure(2, weight=0)
-                self.upload_view_elements['drop_zone_label'].grid(row=1, column=0, pady=(5, 10), padx=20, sticky="nsew")
-
-                self.main_action_button.configure(
-                    text="Browse File",
-                    command=self.upload_numbers_command,
-                    fg_color=DEFAULT_BLUE, hover_color=DEFAULT_HOVER_BLUE,
-                    state="normal"
-                )
+                # Directly open file dialog when entering upload view
+                self.upload_numbers_command()
+                # Immediately go back to initial view after file selection
+                self.toggle_upload_view(self.VIEW_INITIAL)
 
             elif view_state == self.VIEW_MANUAL:
                 self.upload_buttons_frame.rowconfigure(1, weight=1)
@@ -1445,10 +1417,10 @@ class CollegeApp(ctk.CTk):
         )
         logout_btn.place(relx=0.05, rely=0.05, anchor=ctk.NW)
 
-        # Help button (right side) - same size as logout button, initially hidden
+        # Help button (right side) - CHANGED TO PURPLE
         self.help_button = ctk.CTkButton(
             self, text="Help", width=150, height=40,
-            fg_color=DEFAULT_BLUE, hover_color=DEFAULT_HOVER_BLUE,
+            fg_color=OCR_PURPLE, hover_color=OCR_HOVER_PURPLE,  # CHANGED TO PURPLE
             command=self.open_help_dialog
         )
         # Initially hidden - will be shown only when paused or completed
@@ -1466,27 +1438,42 @@ class CollegeApp(ctk.CTk):
         message_frame.grid_rowconfigure(1, weight=1)
         message_frame.grid_columnconfigure(0, weight=1)
 
-        # Message header with image button
+        # Message header with image button and remove button
         message_header = ctk.CTkFrame(message_frame, fg_color="transparent")
         message_header.grid(row=0, column=0, sticky="ew", pady=5, padx=10)
         message_header.grid_columnconfigure(0, weight=1)
         message_header.grid_columnconfigure(1, weight=0)
+        message_header.grid_columnconfigure(2, weight=0)  # For remove button
 
         ctk.CTkLabel(message_header, text="Message", font=ctk.CTkFont(size=18, weight="bold")).grid(row=0, column=0,
                                                                                                     sticky="w")
 
-        # Image button
+        # Image button - CHANGED TO PURPLE
         self.image_button = ctk.CTkButton(
             message_header,
             text="+ Image",
             width=80,
             height=30,
             font=ctk.CTkFont(size=12, weight="bold"),
-            fg_color=DEFAULT_BLUE,
-            hover_color=DEFAULT_HOVER_BLUE,
+            fg_color=OCR_PURPLE,  # CHANGED TO PURPLE
+            hover_color=OCR_HOVER_PURPLE,  # CHANGED TO PURPLE
             command=self.select_image
         )
-        self.image_button.grid(row=0, column=1, padx=(10, 0))
+        self.image_button.grid(row=0, column=1, padx=(10, 5))
+
+        # Remove image button
+        self.remove_image_button = ctk.CTkButton(
+            message_header,
+            text="✕",
+            width=30,
+            height=30,
+            font=ctk.CTkFont(size=12, weight="bold"),
+            fg_color=LOGOUT_RED,
+            hover_color="#C62828",
+            command=self.remove_image
+        )
+        self.remove_image_button.grid(row=0, column=2, padx=(0, 0))
+        self.remove_image_button.grid_remove()  # Hide initially
 
         self.message_textbox = ctk.CTkTextbox(message_frame, wrap="word", font=ctk.CTkFont(size=14))
         self.message_textbox.grid(row=1, column=0, sticky="nsew", padx=10, pady=(0, 10))
@@ -1538,30 +1525,21 @@ class CollegeApp(ctk.CTk):
                                                   )
         self.enter_numbers_button.grid(row=0, column=0, pady=(10, 5), padx=20, sticky="ew")
 
+        # Upload Numbers button
         self.upload_numbers_button = ctk.CTkButton(self.initial_buttons_frame, text="Upload Numbers", height=40,
                                                    font=ctk.CTkFont(size=16),
-                                                   command=lambda: self.toggle_upload_view(self.VIEW_UPLOAD),
+                                                   command=self.upload_numbers_command,
                                                    fg_color=DEFAULT_BLUE, hover_color=DEFAULT_HOVER_BLUE
                                                    )
         self.upload_numbers_button.grid(row=1, column=0, pady=5, padx=20, sticky="ew")
 
-        # OCR Image button
+        # OCR Image button - CHANGED TO BLUE
         self.ocr_image_button = ctk.CTkButton(self.initial_buttons_frame, text="Extract From Image", height=40,
                                               font=ctk.CTkFont(size=16),
                                               command=self.upload_image_numbers,
-                                              fg_color=OCR_PURPLE, hover_color=OCR_HOVER_PURPLE
+                                              fg_color=DEFAULT_BLUE, hover_color=DEFAULT_HOVER_BLUE  # CHANGED TO BLUE
                                               )
         self.ocr_image_button.grid(row=2, column=0, pady=(5, 10), padx=20, sticky="ew")
-
-        # Create clickable drop zone label
-        self.upload_view_elements['drop_zone_label'] = ctk.CTkLabel(
-            self.upload_buttons_frame,
-            text="Click to Browse Excel/CSV File",
-            text_color="gray50", fg_color="gray85", bg_color="transparent", corner_radius=10,
-            font=ctk.CTkFont(size=14, weight="bold"), height=100, cursor="hand2"
-        )
-        # Bind click event to drop zone
-        self.upload_view_elements['drop_zone_label'].bind("<Button-1>", self.on_drop_zone_click)
 
         self.manual_entry_textbox = ctk.CTkTextbox(self.upload_buttons_frame, wrap="word", font=ctk.CTkFont(size=14))
         self.manual_entry_textbox.bind("<KeyRelease>", self._check_manual_process_button_state)
@@ -1582,40 +1560,13 @@ class CollegeApp(ctk.CTk):
         send_frame.grid(row=2, column=0, sticky="ew", pady=(10, 0))
         send_frame.grid_columnconfigure(0, weight=1)
 
-        # Image info frame
-        image_info_frame = ctk.CTkFrame(send_frame, fg_color="transparent")
-        image_info_frame.grid(row=0, column=0, sticky="ew", pady=(0, 5))
-        image_info_frame.grid_columnconfigure(0, weight=1)
-        image_info_frame.grid_columnconfigure(1, weight=0)
-
-        self.image_label = ctk.CTkLabel(
-            image_info_frame,
-            text="No image selected",
-            font=ctk.CTkFont(size=12),
-            text_color="gray"
-        )
-        self.image_label.grid(row=0, column=0, sticky="w", padx=10)
-
-        self.remove_image_button = ctk.CTkButton(
-            image_info_frame,
-            text="✕",
-            width=30,
-            height=25,
-            font=ctk.CTkFont(size=10, weight="bold"),
-            fg_color=LOGOUT_RED,
-            hover_color="#C62828",
-            command=self.remove_image
-        )
-        self.remove_image_button.grid(row=0, column=1, padx=(0, 10))
-        self.remove_image_button.grid_remove()  # Hide initially
-
         self.main_action_button = ctk.CTkButton(
             send_frame, text="Send Message", font=ctk.CTkFont(size=20, weight="bold"),
             height=60, corner_radius=15,
             command=self.handle_send_or_control,
             fg_color=SEND_GREEN, hover_color=SEND_HOVER_GREEN
         )
-        self.main_action_button.grid(row=1, column=0, padx=10, pady=0, sticky="ew")
+        self.main_action_button.grid(row=0, column=0, padx=10, pady=0, sticky="ew")
 
         status_log_frame = ctk.CTkFrame(content_frame, corner_radius=10, fg_color=self.cget("fg_color"))
         status_log_frame.grid(row=0, column=1, sticky="nsew", padx=(10, 20), pady=(20, 20))
@@ -1640,14 +1591,15 @@ class CollegeApp(ctk.CTk):
             row=0, column=0, sticky="w"
         )
 
+        # Download button - CHANGED TO PURPLE
         self.download_button = ctk.CTkButton(
             status_header_frame,
             text="📥 Download",
             width=100,
             height=30,
             font=ctk.CTkFont(size=12, weight="bold"),
-            fg_color=DEFAULT_BLUE,
-            hover_color=DEFAULT_HOVER_BLUE,
+            fg_color=OCR_PURPLE,  # CHANGED TO PURPLE
+            hover_color=OCR_HOVER_PURPLE,  # CHANGED TO PURPLE
             command=self.download_status_report
         )
         self.download_button.grid(row=0, column=1, sticky="e")
