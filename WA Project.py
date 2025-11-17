@@ -9,6 +9,8 @@ import time
 import pywhatkit as kit
 import threading
 from datetime import datetime
+import subprocess
+import sys
 
 # Set appearance mode
 ctk.set_appearance_mode("light")
@@ -22,6 +24,68 @@ SEND_HOVER_GREEN = "#2E7D32"
 NAVIGATION_GRAY = "#9E9E9E"
 NAVIGATION_HOVER_GRAY = "#757575"
 LOGOUT_RED = "#E53935"
+OCR_PURPLE = "#9C27B0"
+OCR_HOVER_PURPLE = "#7B1FA2"
+
+
+# ==========================================================
+# OCR FUNCTIONS - SIMPLIFIED
+# ==========================================================
+def extract_numbers_from_image_robust(image_path):
+    """
+    OCR function that extracts numbers from image without any dialogs
+    """
+    try:
+        from PIL import Image, ImageOps, ImageFilter
+        import pytesseract
+        import re
+
+        # Set Tesseract path
+        pytesseract.pytesseract.tesseract_cmd = r"C:\Users\sambi\OneDrive\Desktop\PROJECT WTP\whatapp_app\Tesseract-OCR\tesseract.exe"
+
+        # Open image
+        img = Image.open(image_path)
+
+        # Convert to grayscale
+        img = img.convert("L")
+
+        # Improve contrast
+        img = ImageOps.autocontrast(img)
+
+        # Enlarge image to help OCR
+        w, h = img.size
+        img = img.resize((w * 3, h * 3), Image.LANCZOS)
+
+        # Slight noise removal
+        img = img.filter(ImageFilter.MedianFilter(size=3))
+
+        # Simple threshold to make it black & white
+        img = img.point(lambda p: 255 if p > 135 else 0)
+
+        # Only allow digits (0–9), English language, page segmentation mode 6
+        custom_config = r'--oem 3 --psm 6 -c tessedit_char_whitelist=0123456789 -l eng'
+        text = pytesseract.image_to_string(img, config=custom_config)
+
+        # Parse numbers from text
+        candidates = re.findall(r'\d{9,13}', text)
+        cleaned = []
+
+        for item in candidates:
+            digits_only = ''.join(ch for ch in item if ch.isdigit())
+            if len(digits_only) < 10:
+                continue
+
+            # Take last 10 digits as mobile number
+            last10 = digits_only[-10:]
+            normalized = "+91" + last10
+            cleaned.append(normalized)
+
+        # Remove duplicates while keeping order
+        unique_numbers = list(dict.fromkeys(cleaned))
+        return unique_numbers, text
+
+    except Exception as e:
+        return None, f"OCR processing error: {str(e)}"
 
 
 # ==========================================================
@@ -218,7 +282,7 @@ class HelpDialog(ctk.CTkToplevel):
 
         message1_label = ctk.CTkLabel(
             point1_frame,
-            text="If the message is not sent please increase the timer by one unit and try again...",
+            text="If the message is not sent please increase the timer ...",
             font=ctk.CTkFont(size=14),
             wraplength=420,
             justify="left"
@@ -517,7 +581,7 @@ class CollegeApp(ctk.CTk):
     VIEW_UPLOAD = 1
     VIEW_MANUAL = 2
 
-    MANUAL_ENTRY_PLACEHOLDER = "Enter Numbers (one per line)"
+    MANUAL_ENTRY_PLACEHOLDER = "Enter Numbers One Per Line)"
     PLACEHOLDER_COLOR = "gray60"
 
     ALLOWED_EXTENSIONS = ['.csv', '.xlsx', '.xls']
@@ -557,6 +621,7 @@ class CollegeApp(ctk.CTk):
         self.image_button = None  # Image button reference
         self.image_label = None  # Image label reference
         self.remove_image_button = None  # Remove image button
+        self.ocr_image_button = None  # OCR image button
 
         # State Variables for Page 3
         self.uploaded_file_path: Optional[str] = None
@@ -571,6 +636,55 @@ class CollegeApp(ctk.CTk):
         self.fail_count = 0
 
         self.show_start_page()
+
+    def upload_image_numbers(self):
+        """
+        Opens a file dialog, reads an image, extracts numbers via OCR,
+        and adds them to the Numbers List in the GUI - SILENT VERSION
+        """
+        # Ask user to choose an image file
+        path = filedialog.askopenfilename(
+            title="Open Image for OCR",
+            filetypes=[("Image Files", "*.png;*.jpg;*.jpeg;*.bmp;*.tiff;*.tif"), ("All files", "*.*")]
+        )
+        if not path:
+            return
+
+        try:
+            # Log what we're doing
+            self.write_to_log(f"Reading numbers from image: {os.path.basename(path)}", "INFO")
+
+            # Use the OCR function
+            numbers, raw_text = extract_numbers_from_image_robust(path)
+
+            if numbers is None:
+                # Error occurred
+                self.write_to_log(f"OCR failed: {raw_text}", "ERROR")
+                return
+
+            if not numbers:
+                # No valid mobile numbers found
+                self.write_to_log("No valid 10-digit numbers detected in the image.", "WARNING")
+                return
+
+            # Add them to our internal list and refresh UI
+            # Store current numbers to avoid duplicates
+            current_numbers = set(self.formatted_numbers_list)
+            new_numbers = [num for num in numbers if num not in current_numbers]
+
+            if new_numbers:
+                self.formatted_numbers_list.extend(new_numbers)
+                self.formatted_numbers_list = sorted(list(set(self.formatted_numbers_list)))
+
+                self._update_numbers_textbox()
+                self.write_to_log(f"✅ {len(new_numbers)} numbers added from image OCR.", "SUCCESS")
+                self._check_send_button_state()
+            else:
+                self.write_to_log("No new numbers found in image (all duplicates).", "INFO")
+
+        except Exception as e:
+            # Any other error
+            self.write_to_log(f"OCR processing failed: {e}", "ERROR")
 
     def open_wait_time_settings(self):
         """Open the wait time settings dialog"""
@@ -628,7 +742,7 @@ class CollegeApp(ctk.CTk):
     def select_image(self):
         """Open file dialog to select an image"""
         file_path = filedialog.askopenfilename(
-            title="Select Image",
+            title="Select Image to Send",
             filetypes=[
                 ("Image files", "*.jpg *.jpeg *.png *.gif *.bmp *.webp"),
                 ("JPEG files", "*.jpg *.jpeg"),
@@ -649,7 +763,7 @@ class CollegeApp(ctk.CTk):
             if self.remove_image_button:
                 self.remove_image_button.grid()
 
-            self.write_to_log(f"Image selected: {image_name}", "SUCCESS")
+            self.write_to_log(f"Image selected for sending: {image_name}", "SUCCESS")
             self._check_send_button_state()
 
     def remove_image(self):
@@ -805,7 +919,7 @@ class CollegeApp(ctk.CTk):
 
         title_label = ctk.CTkLabel(
             content_frame,
-            text="WhatsApp Utility Setup",
+            text="WhatsApp Connectivity Setup",
             font=ctk.CTkFont(size=36, weight="bold")
         )
         title_label.pack(pady=(80, 40))
@@ -1413,20 +1527,31 @@ class CollegeApp(ctk.CTk):
 
         self.initial_buttons_frame = ctk.CTkFrame(self.upload_buttons_frame, fg_color="transparent")
         self.initial_buttons_frame.columnconfigure(0, weight=1)
+        self.initial_buttons_frame.rowconfigure(0, weight=1)  # Enter Numbers
+        self.initial_buttons_frame.rowconfigure(1, weight=1)  # Upload Numbers
+        self.initial_buttons_frame.rowconfigure(2, weight=1)  # OCR Image
 
         self.enter_numbers_button = ctk.CTkButton(self.initial_buttons_frame, text="Enter Numbers", height=40,
                                                   font=ctk.CTkFont(size=16),
                                                   command=lambda: self.toggle_upload_view(self.VIEW_MANUAL),
                                                   fg_color=DEFAULT_BLUE, hover_color=DEFAULT_HOVER_BLUE
                                                   )
-        self.enter_numbers_button.grid(row=0, column=0, pady=(20, 10), padx=20, sticky="ew")
+        self.enter_numbers_button.grid(row=0, column=0, pady=(10, 5), padx=20, sticky="ew")
 
         self.upload_numbers_button = ctk.CTkButton(self.initial_buttons_frame, text="Upload Numbers", height=40,
                                                    font=ctk.CTkFont(size=16),
                                                    command=lambda: self.toggle_upload_view(self.VIEW_UPLOAD),
                                                    fg_color=DEFAULT_BLUE, hover_color=DEFAULT_HOVER_BLUE
                                                    )
-        self.upload_numbers_button.grid(row=1, column=0, pady=(40, 10), padx=20, sticky="ew")
+        self.upload_numbers_button.grid(row=1, column=0, pady=5, padx=20, sticky="ew")
+
+        # OCR Image button
+        self.ocr_image_button = ctk.CTkButton(self.initial_buttons_frame, text="Extract From Image", height=40,
+                                              font=ctk.CTkFont(size=16),
+                                              command=self.upload_image_numbers,
+                                              fg_color=OCR_PURPLE, hover_color=OCR_HOVER_PURPLE
+                                              )
+        self.ocr_image_button.grid(row=2, column=0, pady=(5, 10), padx=20, sticky="ew")
 
         # Create clickable drop zone label
         self.upload_view_elements['drop_zone_label'] = ctk.CTkLabel(
