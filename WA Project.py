@@ -24,8 +24,6 @@ SEND_HOVER_GREEN = "#2E7D32"
 NAVIGATION_GRAY = "#9E9E9E"
 NAVIGATION_HOVER_GRAY = "#757575"
 LOGOUT_RED = "#E53935"
-OCR_PURPLE = "#9C27B0"
-OCR_HOVER_PURPLE = "#7B1FA2"
 
 
 # ==========================================================
@@ -312,14 +310,14 @@ class HelpDialog(ctk.CTkToplevel):
         )
         message2_label.grid(row=0, column=1, sticky="w")
 
-        # Timer button at the bottom - CHANGED TO PURPLE
+        # Timer button at the bottom - CHANGED TO BLUE
         timer_btn = ctk.CTkButton(
             self,
             text="Timer",
             font=ctk.CTkFont(size=16, weight="bold"),
             height=40,
-            fg_color=OCR_PURPLE,  # CHANGED TO PURPLE
-            hover_color=OCR_HOVER_PURPLE,  # CHANGED TO PURPLE
+            fg_color=DEFAULT_BLUE,  # CHANGED TO BLUE
+            hover_color=DEFAULT_HOVER_BLUE,  # CHANGED TO BLUE
             command=self.open_timer_settings
         )
         timer_btn.grid(row=2, column=0, padx=20, pady=(15, 25), sticky="ew")
@@ -384,8 +382,8 @@ class WaitTimeSettingsDialog(ctk.CTkToplevel):
             width=60,
             height=60,
             font=ctk.CTkFont(size=30, weight="bold"),
-            fg_color=OCR_PURPLE,  # CHANGED TO PURPLE
-            hover_color=OCR_HOVER_PURPLE,  # CHANGED TO PURPLE
+            fg_color=DEFAULT_BLUE,  # CHANGED TO BLUE
+            hover_color=DEFAULT_HOVER_BLUE,  # CHANGED TO BLUE
             command=self.decrement_value
         )
         self.decrement_btn.grid(row=0, column=0, padx=5)
@@ -404,8 +402,8 @@ class WaitTimeSettingsDialog(ctk.CTkToplevel):
             width=60,
             height=60,
             font=ctk.CTkFont(size=30, weight="bold"),
-            fg_color=OCR_PURPLE,  # CHANGED TO PURPLE
-            hover_color=OCR_HOVER_PURPLE,  # CHANGED TO PURPLE
+            fg_color=DEFAULT_BLUE,  # CHANGED TO BLUE
+            hover_color=DEFAULT_HOVER_BLUE,  # CHANGED TO BLUE
             command=self.increment_value
         )
         self.increment_btn.grid(row=0, column=2, padx=5)
@@ -451,12 +449,12 @@ class WaitTimeSettingsDialog(ctk.CTkToplevel):
         if self.current_value <= 7:
             self.decrement_btn.configure(state="disabled", fg_color="gray")
         else:
-            self.decrement_btn.configure(state="normal", fg_color=OCR_PURPLE)  # CHANGED TO PURPLE
+            self.decrement_btn.configure(state="normal", fg_color=DEFAULT_BLUE)  # CHANGED TO BLUE
 
         if self.current_value >= 100:
             self.increment_btn.configure(state="disabled", fg_color="gray")
         else:
-            self.increment_btn.configure(state="normal", fg_color=OCR_PURPLE)  # CHANGED TO PURPLE
+            self.increment_btn.configure(state="normal", fg_color=DEFAULT_BLUE)  # CHANGED TO BLUE
 
     def on_save(self):
         self.result = self.current_value
@@ -1417,10 +1415,10 @@ class CollegeApp(ctk.CTk):
         )
         logout_btn.place(relx=0.05, rely=0.05, anchor=ctk.NW)
 
-        # Help button (right side) - CHANGED TO PURPLE
+        # Help button (right side) - CHANGED TO BLUE
         self.help_button = ctk.CTkButton(
             self, text="Help", width=150, height=40,
-            fg_color=OCR_PURPLE, hover_color=OCR_HOVER_PURPLE,  # CHANGED TO PURPLE
+            fg_color=DEFAULT_BLUE, hover_color=DEFAULT_HOVER_BLUE,  # CHANGED TO BLUE
             command=self.open_help_dialog
         )
         # Initially hidden - will be shown only when paused or completed
@@ -1448,15 +1446,15 @@ class CollegeApp(ctk.CTk):
         ctk.CTkLabel(message_header, text="Message", font=ctk.CTkFont(size=18, weight="bold")).grid(row=0, column=0,
                                                                                                     sticky="w")
 
-        # Image button - CHANGED TO PURPLE
+        # Image button - CHANGED TO BLUE
         self.image_button = ctk.CTkButton(
             message_header,
             text="+ Image",
             width=80,
             height=30,
             font=ctk.CTkFont(size=12, weight="bold"),
-            fg_color=OCR_PURPLE,  # CHANGED TO PURPLE
-            hover_color=OCR_HOVER_PURPLE,  # CHANGED TO PURPLE
+            fg_color=DEFAULT_BLUE,  # CHANGED TO BLUE
+            hover_color=DEFAULT_HOVER_BLUE,  # CHANGED TO BLUE
             command=self.select_image
         )
         self.image_button.grid(row=0, column=1, padx=(10, 5))
@@ -1591,15 +1589,15 @@ class CollegeApp(ctk.CTk):
             row=0, column=0, sticky="w"
         )
 
-        # Download button - CHANGED TO PURPLE
+        # Download button - CHANGED TO BLUE
         self.download_button = ctk.CTkButton(
             status_header_frame,
             text="📥 Download",
             width=100,
             height=30,
             font=ctk.CTkFont(size=12, weight="bold"),
-            fg_color=OCR_PURPLE,  # CHANGED TO PURPLE
-            hover_color=OCR_HOVER_PURPLE,  # CHANGED TO PURPLE
+            fg_color=DEFAULT_BLUE,  # CHANGED TO BLUE
+            hover_color=DEFAULT_HOVER_BLUE,  # CHANGED TO BLUE
             command=self.download_status_report
         )
         self.download_button.grid(row=0, column=1, sticky="e")
