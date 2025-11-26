@@ -463,9 +463,6 @@ class WaitTimeSettingsDialog(ctk.CTkToplevel):
         self.result = self.current_value
         # Update parent's wait time directly
         self.parent.wait_time_value = self.current_value
-        # Update the timer display in parent
-        if hasattr(self.parent, 'update_timer_button_display'):
-            self.parent.update_timer_button_display()
         self.destroy()
 
     def on_cancel(self):
@@ -598,7 +595,7 @@ class CollegeApp(ctk.CTk):
         self.after_id_enable = None
 
         # Application configuration
-        self.wait_time_value = 11
+        self.wait_time_value = 11  # Default timer value
         self.selected_image_path = None
         self.status_records = []
 
@@ -620,7 +617,6 @@ class CollegeApp(ctk.CTk):
         self.image_button = None
         self.remove_image_button = None
         self.ocr_image_button = None
-        self.timer_display_btn = None  # Timer display button
 
         # Application state
         self.uploaded_file_path = None
@@ -634,14 +630,29 @@ class CollegeApp(ctk.CTk):
         self.success_count = 0
         self.fail_count = 0
 
+        # Set up window close protocol
+        self.protocol("WM_DELETE_WINDOW", self.on_closing)
+
         # Start with Login Page
         self.show_start_page()
+
+    def on_closing(self):
+        """Handle application closing - reset timer to default"""
+        self.reset_timer_to_default()
+        self.destroy()
+
+    def reset_timer_to_default(self):
+        """Reset the timer to default value (11 seconds)"""
+        self.wait_time_value = 11
 
     # ==========================================================
     # PAGE 1: LOGIN PAGE METHODS
     # ==========================================================
     def show_start_page(self):
         """Display the login page with username and password fields"""
+        # Reset timer to default when showing start page (login page)
+        self.reset_timer_to_default()
+
         for widget in self.winfo_children():
             widget.destroy()
 
@@ -1044,7 +1055,6 @@ class CollegeApp(ctk.CTk):
                 self.status_textbox.delete("1.0", "end")
                 self.status_textbox.configure(state="disabled")
             self.hide_download_button()
-            self.hide_help_button()
 
         self.stop_event.clear()
         self.sending_state = "SENDING"
@@ -1126,13 +1136,7 @@ class CollegeApp(ctk.CTk):
     def open_wait_time_settings(self):
         """Open wait time settings dialog"""
         dialog = WaitTimeSettingsDialog(self, self.wait_time_value)
-        self.wait_window(dialog)  # Changed from wait() to wait_window() for better modal behavior
-        # The timer value is now updated directly in the dialog's on_save method
-
-    def update_timer_button_display(self):
-        """Update the timer button text"""
-        if hasattr(self, 'timer_display_btn') and self.timer_display_btn:
-            self.timer_display_btn.configure(text=f"⏱️ {self.wait_time_value}s")
+        self.wait_window(dialog)
 
     def download_status_report(self):
         """Export status records to Excel file"""
@@ -1163,16 +1167,6 @@ class CollegeApp(ctk.CTk):
         """Hide download button"""
         if self.download_button:
             self.download_button.grid_remove()
-
-    def show_help_button(self):
-        """Show help button"""
-        if self.help_button:
-            self.help_button.place(relx=0.95, rely=0.05, anchor=ctk.NE)
-
-    def hide_help_button(self):
-        """Hide help button"""
-        if self.help_button:
-            self.help_button.place_forget()
 
     # ==========================================================
     # PAGE 3: MAIN UTILITY PAGE - LOG & STATUS SECTION
@@ -1246,7 +1240,6 @@ class CollegeApp(ctk.CTk):
                     button_text = "Stop Image Sending"
                 button.configure(state="normal", text=button_text, fg_color=LOGOUT_RED, hover_color="#C62828",
                                  text_color="white")
-                self.hide_help_button()
                 self.hide_download_button()
 
             elif self.sending_state == "PAUSED":
@@ -1256,7 +1249,6 @@ class CollegeApp(ctk.CTk):
                     button_text = f"Continue Image ({remaining} left)"
                 button.configure(state="normal", text=button_text,
                                  fg_color="#FBC02D", hover_color="#F9A825", text_color="black")
-                self.show_help_button()
                 self.show_download_button()
 
             elif self.sending_state == "DONE":
@@ -1265,7 +1257,6 @@ class CollegeApp(ctk.CTk):
                     button_text = "Image Sent ✅"
                 button.configure(state="disabled", text=button_text,
                                  fg_color=SEND_GREEN, hover_color=SEND_HOVER_GREEN, text_color="white")
-                self.show_help_button()
                 self.show_download_button()
 
             elif message_is_ready and numbers_are_ready and self.sending_state == "IDLE":
@@ -1277,12 +1268,10 @@ class CollegeApp(ctk.CTk):
                         button_text = "Send Image"
                 button.configure(state="normal", text=button_text,
                                  fg_color=SEND_GREEN, hover_color=SEND_HOVER_GREEN, text_color="white")
-                self.hide_help_button()
                 self.hide_download_button()
 
             else:
                 button.configure(state="disabled", text="Send Message", fg_color="gray", text_color="white")
-                self.hide_help_button()
                 self.hide_download_button()
 
     def _check_manual_process_button_state(self, event=None):
@@ -1368,7 +1357,6 @@ class CollegeApp(ctk.CTk):
                 self._update_numbers_textbox()
                 self.write_to_log("Number list cleared. Ready for new input.", "INFO")
                 self.hide_download_button()
-                self.hide_help_button()
 
         if view_state == CollegeApp.VIEW_INITIAL:  # Use class reference
             if self.back_button_upload:
@@ -1427,6 +1415,8 @@ class CollegeApp(ctk.CTk):
         content_frame.grid_rowconfigure(0, weight=1)
 
         def open_logout_dialog():
+            # Reset timer to default before showing start page
+            self.reset_timer_to_default()
             ConfirmLogoutDialog(self, command=lambda: self.show_start_page())
 
         # Logout button (left side)
@@ -1436,14 +1426,13 @@ class CollegeApp(ctk.CTk):
         )
         logout_btn.place(relx=0.05, rely=0.05, anchor=ctk.NW)
 
-        # Help button (right side)
+        # Help button (right side) - ALWAYS VISIBLE
         self.help_button = ctk.CTkButton(
             self, text="Help", width=150, height=40,
             fg_color=DEFAULT_BLUE, hover_color=DEFAULT_HOVER_BLUE,
             command=self.open_help_dialog
         )
-        # Initially hidden - will be shown only when paused or completed
-        self.hide_help_button()
+        self.help_button.place(relx=0.95, rely=0.05, anchor=ctk.NE)
 
         # Utility panel (left side - message and controls)
         utility_panel = ctk.CTkFrame(content_frame, fg_color="transparent")
@@ -1459,13 +1448,12 @@ class CollegeApp(ctk.CTk):
         message_frame.grid_rowconfigure(1, weight=1)
         message_frame.grid_columnconfigure(0, weight=1)
 
-        # Message header with image button, remove button, and timer button
+        # Message header with image button and remove button (NO TIMER BUTTON)
         message_header = ctk.CTkFrame(message_frame, fg_color="transparent")
         message_header.grid(row=0, column=0, sticky="ew", pady=5, padx=10)
         message_header.grid_columnconfigure(0, weight=1)
         message_header.grid_columnconfigure(1, weight=0)
         message_header.grid_columnconfigure(2, weight=0)  # For remove button
-        message_header.grid_columnconfigure(3, weight=0)  # For timer button
 
         ctk.CTkLabel(message_header, text="Message", font=ctk.CTkFont(size=18, weight="bold")).grid(row=0, column=0,
                                                                                                     sticky="w")
@@ -1494,21 +1482,8 @@ class CollegeApp(ctk.CTk):
             hover_color="#C62828",
             command=self.remove_image
         )
-        self.remove_image_button.grid(row=0, column=2, padx=(0, 10))
+        self.remove_image_button.grid(row=0, column=2, padx=(0, 0))
         self.remove_image_button.grid_remove()  # Hide initially
-
-        # Timer display button
-        self.timer_display_btn = ctk.CTkButton(
-            message_header,
-            text=f"⏱️ {self.wait_time_value}s",
-            width=80,
-            height=30,
-            font=ctk.CTkFont(size=12, weight="bold"),
-            fg_color=DEFAULT_BLUE,
-            hover_color=DEFAULT_HOVER_BLUE,
-            command=self.open_wait_time_settings
-        )
-        self.timer_display_btn.grid(row=0, column=3, padx=(0, 0))
 
         self.message_textbox = ctk.CTkTextbox(message_frame, wrap="word", font=ctk.CTkFont(size=14))
         self.message_textbox.grid(row=1, column=0, sticky="nsew", padx=10, pady=(0, 10))
